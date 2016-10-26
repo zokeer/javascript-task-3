@@ -1,50 +1,205 @@
 'use strict';
 
-/**
- * Сделано задание на звездочку
- * Реализовано оба метода и tryLater
- */
 exports.isStar = true;
 
-/**
- * @param {Object} schedule – Расписание Банды
- * @param {Number} duration - Время на ограбление в минутах
- * @param {Object} workingHours – Время работы банка
- * @param {String} workingHours.from – Время открытия, например, "10:00+5"
- * @param {String} workingHours.to – Время закрытия, например, "18:00+5"
- * @returns {Object}
- */
+var DayCast = {
+    'ПН': 17,
+    'ВТ': 18,
+    'СР': 19
+};
+
+var InvertDayCast = {
+    1: 'ПН',
+    2: 'ВТ',
+    3: 'СР'
+};
+
+var BankGMT;
+
+function convertToDate(time) {
+    var match = /([а-я]{2})\s(\d{2}:\d{2})([+-]\d+)/gi.exec(time);
+
+    return match !== null ? new Date('October ' + DayCast[match[1]] +
+            ', 2016 ' + match[2] + ':00 GMT' + match[3] + '00') : time;
+}
+
+function convertSchedule(schedule) {
+    var newSchedule = [];
+    for (var buddy in schedule) {
+        for (var i = 0; i < schedule[buddy].length; i++) {
+            newSchedule.push(
+                {
+                    from: convertToDate(schedule[buddy][i].from),
+                    to: convertToDate(schedule[buddy][i].to)
+                });
+        }
+    }
+    newSchedule.sort(compareTime);
+
+    return newSchedule;
+}
+
+function convertWorkingHours(workingHours) {
+    var matchFrom = /(\d{2}:\d{2})([+-]\d+)/gi.exec(workingHours.from);
+    var matchTo = /(\d{2}:\d{2})([+-]\d+)/gi.exec(workingHours.to);
+    BankGMT = matchFrom[2];
+    var newWorkingHours = [];
+    for (var i = 0; i < 3; i++) {
+        newWorkingHours.push(
+            {
+                from: new Date('October ' + (17 + i) +
+                    ', 2016 ' + matchFrom[1] + ':00 GMT' + matchFrom[2] + '00'),
+                to: new Date('October ' + (17 + i) +
+                    ', 2016 ' + matchTo[1] + ':00 GMT' + matchTo[2] + '00')
+            });
+    }
+
+    return newWorkingHours;
+}
+
+function compareTime(first, second) {
+    return first.from - second.from;
+}
+
+function getNewCurrent(schedule, time) {
+    var newCurrent = new Date(1970);
+    schedule.forEach(function (prevTime) {
+        if (prevTime.to >= time.to && prevTime.from <= time.to) {
+            newCurrent = new Date(Math.max(newCurrent, prevTime.to));
+        }
+    });
+
+    return newCurrent;
+}
+
+function getFreeMoments(schedule) {
+    var freeMoments = [];
+    var currentTime = convertToDate('ПН 00:00' + BankGMT);
+    var robEnd = new Date(2016, 9, 19, 23, 59, 0);
+    schedule.forEach(function (time) {
+        if (time.from > currentTime) {
+            freeMoments.push(
+                {
+                    from: currentTime, to: time.from
+                });
+            currentTime = getNewCurrent(schedule, time);
+        }
+    });
+    if (currentTime < robEnd) {
+        freeMoments.push(
+            {
+                from: currentTime,
+                to: robEnd
+            });
+    }
+
+    return freeMoments;
+}
+
+function getApprMomentDaySame(time, duration, workingHours) {
+    if (time.from < workingHours[time.from.getDay() - 1].from) {
+        time.from = workingHours[time.from.getDay() - 1].from;
+    }
+    if (time.to > workingHours[time.to.getDay() - 1].to) {
+        time.to = workingHours[time.to.getDay() - 1].to;
+    }
+
+    return time.to - time.from >= duration ? {
+        from: time.from, to: time.to
+    } : null;
+}
+
+function getApprMomentDayDiff(time, duration, workingHours) {
+    var apprMoments = [];
+    if (time.from < workingHours[time.from.getDay() - 1].from) {
+        time.from = workingHours[time.from.getDay() - 1].from;
+    }
+    workingHours[time.from.getDay() - 1].to - time.from >= duration ? apprMoments.push(
+        {
+            from: time.from, to: workingHours[time.from.getDay() - 1].to
+        }
+    ) : apprMoments.push(null);
+    time.to - workingHours[time.to.getDay() - 1].from >= duration ? apprMoments.push(
+        {
+            from: workingHours[time.to.getDay() - 1].from, to: time.to
+        }
+    ) : apprMoments.push(null);
+
+    return apprMoments;
+}
+
+function getApprMoments(freeMoments, duration, workingHours) {
+    var apprMoments = [];
+    var apprMoment;
+    freeMoments.forEach(function (time) {
+        if (time.from.getDay() === time.to.getDay()) {
+            apprMoment = getApprMomentDaySame(time, duration, workingHours);
+            if (apprMoment) {
+                apprMoments.push(apprMoment);
+            }
+        } else {
+            apprMoment = getApprMomentDayDiff(time, duration, workingHours);
+            apprMoment.forEach(function (thing) {
+                if (thing) {
+                    apprMoments.push(thing);
+                }
+            });
+        }
+    });
+
+    return apprMoments;
+}
+
+function formatTemplate(apprMoment, template) {
+    var hourInMs = 60 * 60 * 1000;
+    var apprOffset = apprMoment.from.getTimezoneOffset() / -60 * hourInMs;
+    var bankOffset = Number(BankGMT) * hourInMs;
+    apprMoment.from = new Date(apprMoment.from - apprOffset + bankOffset);
+
+    return template
+        .replace('%DD', InvertDayCast[apprMoment.from.getDay()])
+        .replace('%HH', apprMoment.from.getHours())
+        .replace('%MM', apprMoment.from.getMinutes());
+}
+
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
-    console.info(schedule, duration, workingHours);
+    schedule = convertSchedule(schedule);
+    workingHours = convertWorkingHours(workingHours);
+    var freeMoments = getFreeMoments(schedule);
+    duration = duration * 60 * 1000;
+    var apprMoments = getApprMoments(freeMoments, duration, workingHours);
+    var pointer = 0;
+    console.info(apprMoments);
 
     return {
 
-        /**
-         * Найдено ли время
-         * @returns {Boolean}
-         */
         exists: function () {
-            return false;
+            return apprMoments.length > 0;
         },
 
-        /**
-         * Возвращает отформатированную строку с часами для ограбления
-         * Например,
-         *   "Начинаем в %HH:%MM (%DD)" -> "Начинаем в 14:59 (СР)"
-         * @param {String} template
-         * @returns {String}
-         */
         format: function (template) {
-            return template;
+            return apprMoments.length > 0 ? formatTemplate(apprMoments[pointer], template) : '';
         },
-
-        /**
-         * Попробовать найти часы для ограбления позже [*]
-         * @star
-         * @returns {Boolean}
-         */
         tryLater: function () {
-            return false;
+            var currentMoment = apprMoments[pointer].from;
+            currentMoment = currentMoment.getTime() + 1800000;
+            currentMoment = new Date(currentMoment);
+            if (apprMoments[pointer].to.getTime() - currentMoment.getTime() >= duration) {
+                apprMoments[pointer].from = currentMoment;
+
+                return true;
+            }
+            var oldPointer = pointer;
+            while (apprMoments[pointer].from - apprMoments[oldPointer].from < 1800000) {
+                if (pointer < apprMoments.length - 1) {
+                    pointer++;
+                } else {
+                    return false;
+                }
+            }
+
+            return true;
         }
     };
 };
+
