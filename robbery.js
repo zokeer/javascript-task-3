@@ -247,6 +247,9 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             return apprMoments.length > 0 ? formatTemplate(apprMoments[pointer], template) : '';
         },
         tryLater: function () {
+            if (apprMoments.length === 0) {
+                return false;
+            }
             var currentMoment = apprMoments[pointer].from.getTime();
             currentMoment += 1800000;
             if (apprMoments[pointer].to.getTime() - currentMoment >= duration) {
