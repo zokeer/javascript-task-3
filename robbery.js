@@ -82,7 +82,7 @@ function getNewCurrent(schedule, time) {
 
 function getFreeMoments(schedule) {
     var freeMoments = [];
-    var currentTime = convertToDate('ПН 00:00' + BankGMT);
+    var currentTime = new Date(2016, 9, 17, 0, 0, 0);
     var robEnd = new Date(2016, 9, 19, 23, 59, 0);
     schedule.forEach(function (time) {
         if (time.from > currentTime) {
@@ -226,3 +226,4 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
         }
     };
 };
+
