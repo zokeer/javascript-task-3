@@ -23,15 +23,23 @@ function convertToDate(time) {
             ', 2016 ' + match[2] + ':00 GMT' + match[3] + '00') : time;
 }
 
+function transfromSchedule(buddy, schedule, newSchedule) {
+    for (var i = 0; i < schedule[buddy].length; i++) {
+        newSchedule.push(
+            {
+                from: convertToDate(schedule[buddy][i].from),
+                to: convertToDate(schedule[buddy][i].to)
+            });
+    }
+
+    return newSchedule;
+}
+
 function convertSchedule(schedule) {
     var newSchedule = [];
     for (var buddy in schedule) {
-        for (var i = 0; i < schedule[buddy].length; i++) {
-            newSchedule.push(
-                {
-                    from: convertToDate(schedule[buddy][i].from),
-                    to: convertToDate(schedule[buddy][i].to)
-                });
+        if ({}.hasOwnProperty.call(schedule, buddy)) {
+            newSchedule = transfromSchedule(buddy, schedule, newSchedule);
         }
     }
     newSchedule.sort(compareTime);
@@ -114,16 +122,24 @@ function getApprMomentDayDiff(time, duration, workingHours) {
     if (time.from < workingHours[time.from.getDay() - 1].from) {
         time.from = workingHours[time.from.getDay() - 1].from;
     }
-    workingHours[time.from.getDay() - 1].to - time.from >= duration ? apprMoments.push(
-        {
-            from: time.from, to: workingHours[time.from.getDay() - 1].to
-        }
-    ) : apprMoments.push(null);
-    time.to - workingHours[time.to.getDay() - 1].from >= duration ? apprMoments.push(
-        {
-            from: workingHours[time.to.getDay() - 1].from, to: time.to
-        }
-    ) : apprMoments.push(null);
+    if (workingHours[time.from.getDay() - 1].to - time.from >= duration) {
+        apprMoments.push(
+            {
+                from: time.from, to: workingHours[time.from.getDay() - 1].to
+            }
+        );
+    } else {
+        apprMoments.push(null);
+    }
+    if (time.to - workingHours[time.to.getDay() - 1].from >= duration) {
+        apprMoments.push(
+            {
+                from: workingHours[time.to.getDay() - 1].from, to: time.to
+            }
+        );
+    } else {
+        apprMoments.push(null);
+    }
 
     return apprMoments;
 }
@@ -150,6 +166,15 @@ function getApprMoments(freeMoments, duration, workingHours) {
     return apprMoments;
 }
 
+function transfromInTwoDig(number) {
+    if (number <= 9) {
+
+        return '0' + number;
+    }
+
+    return number;
+}
+
 function formatTemplate(apprMoment, template) {
     var hourInMs = 60 * 60 * 1000;
     var apprOffset = apprMoment.from.getTimezoneOffset() / -60 * hourInMs;
@@ -158,8 +183,8 @@ function formatTemplate(apprMoment, template) {
 
     return template
         .replace('%DD', InvertDayCast[apprMoment.from.getDay()])
-        .replace('%HH', apprMoment.from.getHours())
-        .replace('%MM', apprMoment.from.getMinutes());
+        .replace('%HH', transfromInTwoDig(apprMoment.from.getHours()))
+        .replace('%MM', transfromInTwoDig(apprMoment.from.getMinutes()));
 }
 
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
@@ -169,7 +194,6 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
     duration = duration * 60 * 1000;
     var apprMoments = getApprMoments(freeMoments, duration, workingHours);
     var pointer = 0;
-    console.info(apprMoments);
 
     return {
 
@@ -202,4 +226,3 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
         }
     };
 };
-
