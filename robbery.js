@@ -179,12 +179,12 @@ function formatTemplate(apprMoment, template) {
     var hourInMs = 60 * 60 * 1000;
     var apprOffset = apprMoment.from.getTimezoneOffset() / -60 * hourInMs;
     var bankOffset = Number(BankGMT) * hourInMs;
-    apprMoment.from = new Date(apprMoment.from - apprOffset + bankOffset);
+    var time = new Date(apprMoment.from - apprOffset + bankOffset);
 
     return template
-        .replace('%DD', InvertDayCast[apprMoment.from.getDay()])
-        .replace('%HH', transfromInTwoDig(apprMoment.from.getHours()))
-        .replace('%MM', transfromInTwoDig(apprMoment.from.getMinutes()));
+        .replace('%DD', InvertDayCast[time.getDay()])
+        .replace('%HH', transfromInTwoDig(time.getHours()))
+        .replace('%MM', transfromInTwoDig(time.getMinutes()));
 }
 
 exports.getAppropriateMoment = function (schedule, duration, workingHours) {
@@ -205,11 +205,10 @@ exports.getAppropriateMoment = function (schedule, duration, workingHours) {
             return apprMoments.length > 0 ? formatTemplate(apprMoments[pointer], template) : '';
         },
         tryLater: function () {
-            var currentMoment = apprMoments[pointer].from;
-            currentMoment = currentMoment.getTime() + 1800000;
-            currentMoment = new Date(currentMoment);
-            if (apprMoments[pointer].to.getTime() - currentMoment.getTime() >= duration) {
-                apprMoments[pointer].from = currentMoment;
+            var currentMoment = apprMoments[pointer].from.getTime();
+            currentMoment += 1800000;
+            if (apprMoments[pointer].to.getTime() - currentMoment >= duration) {
+                apprMoments[pointer].from = new Date(currentMoment);
 
                 return true;
             }
