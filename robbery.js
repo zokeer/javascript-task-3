@@ -134,7 +134,40 @@ function getApprMomentDayDiff(time, duration, workingHours) {
     if (time.to - workingHours[time.to.getDay() - 1].from >= duration) {
         apprMoments.push(
             {
-                from: workingHours[time.to.getDay() - 1].from, to: time.to
+                from: workingHours[time.to.getDay() - 1].from,
+                to: new Date(Math.min(time.to, workingHours[time.to.getDay() - 1].to))
+            }
+        );
+    } else {
+        apprMoments.push(null);
+    }
+
+    return apprMoments;
+}
+
+function getApprMomentDay2Diff(time, duration, workingHours) {
+    var apprMoments = [];
+    if (time.from < workingHours[time.from.getDay() - 1].from) {
+        time.from = workingHours[time.from.getDay() - 1].from;
+    }
+    if (workingHours[time.from.getDay() - 1].to - time.from >= duration) {
+        apprMoments.push(
+            {
+                from: time.from, to: workingHours[time.from.getDay() - 1].to
+            }
+        );
+    } else {
+        apprMoments.push(null);
+    }
+    apprMoments.push({
+        from: workingHours[time.to.getDay() - 2].from,
+        to: workingHours[time.to.getDay() - 2].to
+    });
+    if (time.to - workingHours[time.to.getDay() - 1].from >= duration) {
+        apprMoments.push(
+            {
+                from: workingHours[time.to.getDay() - 1].from,
+                to: new Date(Math.min(time.to, workingHours[time.to.getDay() - 1].to))
             }
         );
     } else {
@@ -153,8 +186,17 @@ function getApprMoments(freeMoments, duration, workingHours) {
             if (apprMoment) {
                 apprMoments.push(apprMoment);
             }
-        } else {
+        }
+        if (time.from.getDay() === time.to.getDay() - 1) {
             apprMoment = getApprMomentDayDiff(time, duration, workingHours);
+            apprMoment.forEach(function (thing) {
+                if (thing) {
+                    apprMoments.push(thing);
+                }
+            });
+        }
+        if (time.from.getDay() === time.to.getDay() - 2) {
+            apprMoment = getApprMomentDay2Diff(time, duration, workingHours);
             apprMoment.forEach(function (thing) {
                 if (thing) {
                     apprMoments.push(thing);
