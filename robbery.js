@@ -131,7 +131,8 @@ function getApprMomentDayDiff(time, duration, workingHours) {
     } else {
         apprMoments.push(null);
     }
-    if (time.to - workingHours[time.to.getDay() - 1].from >= duration) {
+    if (Math.min(time.to, workingHours[time.to.getDay() - 1].to) -
+        workingHours[time.to.getDay() - 1].from >= duration) {
         apprMoments.push(
             {
                 from: workingHours[time.to.getDay() - 1].from,
